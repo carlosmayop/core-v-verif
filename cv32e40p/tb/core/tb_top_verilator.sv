@@ -90,7 +90,7 @@ module tb_top_verilator
           .RAM_ADDR_WIDTH    (RAM_ADDR_WIDTH),
           .BOOT_ADDR         (BOOT_ADDR),
           .COREV_CLUSTER     (0),
-          .FPU               (0),
+          .FPU               (1),
           .ZFINX             (0),
           .DM_HALTADDRESS    (32'h1A110800)
          )
