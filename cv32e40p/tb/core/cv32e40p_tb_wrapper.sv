@@ -85,6 +85,24 @@ module cv32e40p_tb_wrapper
 //          .pc_id_i            ( cv32e40p_core_i.pc_id                       )
 //      );
 
+    
+    parameter APU_NARGS_CPU = 3;
+    parameter APU_WOP_CPU = 6;
+    parameter APU_NDSFLAGS_CPU = 15;
+    parameter APU_NUSFLAGS_CPU = 5;
+    // Core to FPU
+    logic                              apu_busy;
+    logic                              apu_req;
+    logic [   APU_NARGS_CPU-1:0][31:0] apu_operands;
+    logic [     APU_WOP_CPU-1:0]       apu_op;
+    logic [APU_NDSFLAGS_CPU-1:0]       apu_flags;
+
+    // FPU to Core
+    logic                              apu_gnt;
+    logic                              apu_rvalid;
+    logic [                31:0]       apu_rdata;
+    logic [APU_NUSFLAGS_CPU-1:0]       apu_rflags;
+
     // instantiate the core
     cv32e40p_core #(
                  .COREV_PULP       (COREV_PULP),
@@ -120,14 +138,15 @@ module cv32e40p_tb_wrapper
          .data_wdata_o           ( data_wdata            ),
          .data_rdata_i           ( data_rdata            ),
 
-         .apu_req_o              (                       ),
-         .apu_gnt_i              ( 1'b0                  ),
-         .apu_operands_o         (                       ),
-         .apu_op_o               (                       ),
-         .apu_flags_o            (                       ),
-         .apu_rvalid_i           ( 1'b0                  ),
-         .apu_result_i           ( {32{1'b0}}            ),
-         .apu_flags_i            ( {5{1'b0}}             ), // APU_NUSFLAGS_CPU
+         .apu_busy_o             ( apu_busy              ),
+         .apu_req_o              ( apu_req               ),
+         .apu_gnt_i              ( apu_gnt               ),
+         .apu_operands_o         ( apu_operands          ),
+         .apu_op_o               ( apu_op                ),
+         .apu_flags_o            ( apu_flags             ),
+         .apu_rvalid_i           ( apu_rvalid            ),
+         .apu_result_i           ( apu_rdata             ),
+         .apu_flags_i            ( apu_rflags            ), // APU_NUSFLAGS_CPU
 
          // Interrupts verified in UVM environment
          .irq_i                  ( {32{1'b0}}            ),
@@ -139,6 +158,44 @@ module cv32e40p_tb_wrapper
          .fetch_enable_i         ( fetch_enable_i        ),
          .core_sleep_o           ( core_sleep_o          )
        );
+       
+      generate
+        if (FPU) begin : fpu_gen
+          
+          assign apu_clk_en = apu_req | apu_busy;
+
+          // FPU clock gate
+          cv32e40p_clock_gate core_clock_gate_i (
+              .clk_i       (clk_i),
+              .en_i        (apu_clk_en),
+              .scan_cg_en_i(scan_cg_en_i),
+              .clk_o       (apu_clk)
+          );
+
+          // Instantiate the FPU wrapper
+          cv32e40p_fp_wrapper #(
+              .FPU_ADDMUL_LAT(0),
+              .FPU_OTHERS_LAT(0)
+          ) fp_wrapper_i (
+              .clk_i         (apu_clk),
+              .rst_ni        (rst_ni),
+              .apu_req_i     (apu_req),
+              .apu_gnt_o     (apu_gnt),
+              .apu_operands_i(apu_operands),
+              .apu_op_i      (apu_op),
+              .apu_flags_i   (apu_flags),
+              .apu_rvalid_o  (apu_rvalid),
+              .apu_rdata_o   (apu_rdata),
+              .apu_rflags_o  (apu_rflags)
+          );
+        end else begin : no_fpu_gen
+          // Drive FPU output signals to 0
+          assign apu_gnt    = '0;
+          assign apu_rvalid = '0;
+          assign apu_rdata  = '0;
+          assign apu_rflags = '0;
+        end
+      endgenerate
 
     // this handles read to RAM and memory mapped pseudo peripherals
     mm_ram

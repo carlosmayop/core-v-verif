@@ -155,7 +155,7 @@ XRUN_DIR          = xcelium.d
 # verilator configuration
 VERILATOR           = verilator
 VERI_FLAGS         +=
-VERI_COMPILE_FLAGS += -Wno-BLKANDNBLK $(SV_CMP_FLAGS) # hope this doesn't hurt us in the long run
+VERI_COMPILE_FLAGS += -Wno-fatal -Wno-BLKANDNBLK $(SV_CMP_FLAGS) # hope this doesn't hurt us in the long run
 VERI_TRACE         ?=
 VERI_OBJ_DIR       ?= cobj_dir
 #VERI_LOG_DIR       ?= cobj_dir/logs
@@ -219,7 +219,7 @@ CV_CORE_RTLSRC  := $(filter-out $(CV_CORE_PKG)/rtl/$(CV_CORE_LC)_register_file_l
 # FIXME: temporarily using a local manifest for the core.
 #        This is BAD PRACTICE and will be fixed with
 #        https://github.com/openhwgroup/CV_CORE/pull/421 is resolved.
-CV_CORE_MANIFEST    := $(CV_CORE_PKG)/cv32e40p_manifest.flist
+CV_CORE_MANIFEST    := $(CV_CORE_PKG)/cv32e40p_fpu_manifest.flist
 export DESIGN_RTL_DIR = $(CV_CORE_PKG)/rtl
 
 # Shorthand rules for convience
@@ -496,7 +496,7 @@ testbench_verilator: CV_CORE_pkg $(TBSRC_VERI) $(TBSRC_PKG)
 		-f $(CV_CORE_MANIFEST) \
 		$(CV_CORE_PKG)/bhv/$(CV_CORE_LC)_core_log.sv \
 		$(TBSRC_CORE)/tb_top_verilator.cpp --Mdir $(VERI_OBJ_DIR) \
-		-CFLAGS "-std=gnu++11 $(VERI_CFLAGS)" \
+		-CFLAGS "-std=gnu++14 $(VERI_CFLAGS)" \
 		$(VERI_COMPILE_FLAGS)
 	$(MAKE) -C $(VERI_OBJ_DIR) -f Vtb_top_verilator.mk
 	mkdir -p $(SIM_RESULTS)
